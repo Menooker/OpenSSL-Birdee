@@ -12,6 +12,6 @@
         "linux64": ["-lcrypto", "-lssl"]
     },
     "extra": {
-        "win64": "http://localhost:8000/openssl.zip"
+        "win64": "https://github.com/Menooker/OpenSSL-Birdee/releases/download/0.0.1-pre/openssl.zip"
     }
 }
