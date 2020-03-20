@@ -1,0 +1,82 @@
+package openssl
+
+import {@"openssl.specific.windows" if get_os_name()=="windows" else "birdee"@}:*
+import openssl.x509:*
+
+declare func OPENSSL_init_ssl(opts as ulong, ##OPENSSL_INIT_SETTINGS##settings as pointer)
+
+@private declare func TLSv1_2_client_method() as SSL_METHOD
+@private declare func SSL_CTX_new(meth as SSL_METHOD) as SSL_CTX
+@private declare func SSL_CTX_free(meth as SSL_CTX)
+declare func ERR_get_error() as int
+@private declare func ERR_error_string_n(e as ulong, buf as pointer, len as ulong)
+
+@init_script
+{@
+from bdconst import *
+define("SSL_MODE_AUTO_RETRY",0x00000004)
+define("OPENSSL_INIT_LOAD_SSL_STRINGS",      0x00200000)
+define("OPENSSL_INIT_LOAD_CRYPTO_STRINGS",   0x00000002)
+@}
+dim ttt as int
+class SSL_exception: runtime_exception
+    public func __init__()
+        dim e = ERR_get_error()
+        dim buf = new byte*1024
+        ERR_error_string_n(e,addressof(buf[0]),1024)
+        super.__init__("SSL Error:\n"+ new string:copy_bytes(buf, 0, 1024))
+    end
+end
+
+
+@private declare func SSL_CTX_get_cert_store(ctx as SSL_CTX) as X509_STORE
+@private declare func SSL_CTX_load_verify_locations(ctx as SSL_CTX, cafile as pointer, capath as pointer) as int
+class SSL_CTX
+    #dummy
+    public func free() => SSL_CTX_free(this)
+    public func get_cert_store() as X509_STORE => SSL_CTX_get_cert_store(this)
+    public func load_verify_locations(cafile as string, capath as string)
+        dim ret = SSL_CTX_load_verify_locations(this,cafile.get_raw(),capath.get_raw())
+        if ret ==0 then
+            throw new SSL_exception()
+        end
+    end
+    public func load_default_certs()
+{@
+if get_os_name()=="windows":
+    set_ast(expr('''load_system_cert(get_cert_store())'''))
+else:
+    set_ast(expr('''load_verify_locations("/etc/ssl/certs/ca-certificates.crt", "/etc/ssl/certs/")'''))
+@}
+    end
+end
+
+@private declare func SSL_ctrl(ssl as SSL, cmd as int, larg as long,  parg as pointer) as long
+@private declare func SSL_get_verify_result(ssl as SSL) as long
+class SSL
+    public func set_mode(mod as int) => SSL_ctrl(this,33,mod, pointerof(null))
+    public func get_verify_result() as long => SSL_get_verify_result(this)
+end
+
+class SSL_METHOD
+    #dummy
+end
+
+func create_TLSv1_2_client_method() as SSL_METHOD
+    dim t = TLSv1_2_client_method()
+    if t===null then
+        throw new SSL_exception()
+    end
+    return t
+end
+
+func create_SSL_CTX(meth as SSL_METHOD) as SSL_CTX
+    dim t = SSL_CTX_new(meth)
+    if t===null then
+        throw new SSL_exception()
+    end
+    return t
+end
+
+OPENSSL_init_ssl({@OPENSSL_INIT_LOAD_CRYPTO_STRINGS()@} | {@OPENSSL_INIT_LOAD_SSL_STRINGS()@}, pointerof(null))
+OPENSSL_init_ssl(0, pointerof(null))

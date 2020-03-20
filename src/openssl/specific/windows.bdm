@@ -1,0 +1,39 @@
+package openssl.specific
+
+import openssl.x509:d2i_X509
+import openssl.x509:X509_STORE
+
+struct HCERTSTORE
+    public handle as pointer
+end
+
+declare func CertOpenSystemStoreA(hProv as pointer, szSubsystemProtocol as pointer) as HCERTSTORE
+declare func CertEnumCertificatesInStore(hCertStore as HCERTSTORE,  pPrevCertContext as CCERT_CONTEXT) as CCERT_CONTEXT
+declare func CertFreeCertificateContext(pCertContext as CCERT_CONTEXT) as int
+declare func CertCloseStore(hCertStore as HCERTSTORE, dwFlags as int) as int
+
+class CCERT_CONTEXT
+  public dwCertEncodingType as int
+  public pbCertEncoded as pointer
+  public cbCertEncoded as int
+  public pCertInfo as pointer
+  public hCertStore as HCERTSTORE
+end
+
+func load_system_cert(x509_store as X509_STORE)
+    dim store = CertOpenSystemStoreA(pointerof(null), "ROOT".get_raw())
+    if store.handle == pointerof(null) then
+        throw new runtime_exception("CertOpenSystemStoreA error")
+    end
+    dim context as CCERT_CONTEXT = null
+    context = CertEnumCertificatesInStore(store,context)
+    while context!==null
+        dim x509 = d2i_X509(pointerof(null), addressof(context.pbCertEncoded), context.cbCertEncoded)
+        if (x509!==null) then
+            x509_store.add_cert(x509)
+        end
+        context = CertEnumCertificatesInStore(store,context)
+    end
+    CertFreeCertificateContext(context)
+    CertCloseStore(store, 0)
+end

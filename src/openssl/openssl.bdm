@@ -1,0 +1,42 @@
+package openssl
+
+import openssl.bio:*
+import openssl.ssl:*
+
+{@
+from openssl_0ssl import *
+@}
+dim method = openssl.ssl.create_TLSv1_2_client_method()
+dim ctx = openssl.ssl.create_SSL_CTX(method)
+defer
+    ctx.free()
+end
+
+ctx.load_default_certs()
+dim bio = openssl.bio.create_BIO_new_ssl_connect(ctx)
+defer
+    bio.free_all()
+end
+dim ssl = bio.get_ssl()
+ssl.set_mode({@SSL_MODE_AUTO_RETRY()@})
+bio.set_conn_hostname("www.zhihu.com:443")
+bio.do_connect()
+dim err = ssl.get_verify_result()
+if err !=0 then
+    println("Ve" + int2str(err))
+else
+    println("Verify done")
+end
+dim req = "GET / HTTP/1.1\r\nHost: www.zhihu.com:443\r\nConnection: Close\r\n\r\n"
+bio.puts(req)
+dim buf as byte[] = new byte*1024
+while true
+    dim n=bio.read(addressof(buf[0]),buf.length())
+    if n ==0 then
+        break
+    end
+    if n<0 then
+        throw new SSL_exception()
+    end
+    print(new string:copy_bytes(buf,0,n))
+end

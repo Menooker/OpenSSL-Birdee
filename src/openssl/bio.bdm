@@ -1,0 +1,54 @@
+package openssl
+import openssl.ssl:*
+
+@private declare func BIO_new_ssl_connect(ctx as SSL_CTX) as BIO
+@private declare func BIO_ctrl(bp as BIO, cmd as int, larg as long,  parg as pointer) as long
+@private declare func BIO_puts(bp as BIO, buf as pointer) as int
+@private declare func BIO_read(b as BIO, data as pointer, dlen as int) as int
+@private declare func BIO_free_all(b as BIO)
+
+@private func _BIO_ctrl(bp as BIO, cmd as int, larg as long,  parg as pointer)
+    if BIO_ctrl(bp, cmd, larg, parg)<=0 then
+        throw new SSL_exception()
+    end
+end
+
+class BIO
+    public func get_ssl() as SSL
+        dim out as SSL
+        _BIO_ctrl(this, 110, 0, addressof(out))
+        return out
+    end
+
+    public func set_conn_hostname(host as string) as SSL
+        _BIO_ctrl(this, 100, 0, host.get_raw())
+    end
+    
+    public func do_connect()
+        _BIO_ctrl(this, 101, 0, pointerof(null))
+    end
+
+    public func puts(p as string) as int
+        return BIO_puts(this,p.get_raw())
+    end
+
+    public func read(buf as pointer ,len as int) as int
+        return BIO_read(this, buf, len)
+    end
+
+    public func free_all()
+        return BIO_free_all(this)
+    end
+
+end
+
+func create_BIO_new_ssl_connect(ctx as SSL_CTX) as BIO
+    dim t = BIO_new_ssl_connect(ctx)
+    if t===null then
+        throw new SSL_exception()
+    end
+    return t
+end
+
+
+

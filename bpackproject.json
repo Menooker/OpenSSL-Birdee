@@ -1,0 +1,17 @@
+{
+    "author": "Menooker",
+    "dependencies": [],
+    "name": "Birdee-OpenSSL",
+    "version": "0.0.1",
+    "root_modules": ["openssl.openssl"],
+    "link_target": "executable",
+    "linker_args": {
+        "win64": ["crypt32.lib", "ws2_32.lib",
+            "{LIBPATH}/libcrypto.lib",
+            "{LIBPATH}/libssl.lib"],
+        "linux64": ["-lcrypto", "-lssl"]
+    },
+    "extra": {
+        "win64": "http://localhost:8000/openssl.zip"
+    }
+}

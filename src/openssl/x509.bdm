@@ -1,0 +1,14 @@
+package openssl
+
+@private declare func X509_free(p as X509)
+class X509
+    public func free() => X509_free(this)
+end
+
+declare func d2i_X509(##X509 **## px as pointer, ##const unsigned char **##in as pointer, len as int) as X509
+@private declare func X509_STORE_add_cert(store as X509_STORE, cer as X509) as int
+
+class X509_STORE
+    public func add_cert(cer as X509) as int=> X509_STORE_add_cert(this,cer)
+    
+end
